@@ -106,7 +106,7 @@ int main ( )
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Error en la validacion\n",100,0);
           }
-          if (strcmp(option, "REGISTRO")== 0 && arrayClientes[numClientes - 1].estado == 0) {
+          if (strcmp(option, "REGISTR")== 0 && arrayClientes[numClientes - 1].estado == 0) {
             sscanf(buffer,"REGISTRO -u %s -p %s", aux, aux1);
             if (registraUsuario(aux, aux1, arrayClientes, numClientes) == true)
               send(arrayClientes[numClientes - 1].socket,"+OK. Usuario registrado\n",100,0);
