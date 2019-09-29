@@ -100,18 +100,27 @@ int main ( )
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Usuario incorrecto\n",100,0);
           }
-          if (strcmp(option, "PASSWORD")== 0 && arrayClientes[numClientes - 1].estado == 1) {
+          else if (strcmp(option, "PASSWORD")== 0 && arrayClientes[numClientes - 1].estado == 1) {
             if (compruebaPass(aux, arrayClientes, numClientes) == true)
               send(arrayClientes[numClientes - 1].socket,"+OK. Usuario validado\n",100,0);
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Error en la validacion\n",100,0);
           }
-          if (strcmp(option, "REGISTR")== 0 && arrayClientes[numClientes - 1].estado == 0) {
+          else if (strcmp(option, "REGISTRO")== 0 && arrayClientes[numClientes - 1].estado == 0) {
             sscanf(buffer,"REGISTRO -u %s -p %s", aux, aux1);
             if (registraUsuario(aux, aux1, arrayClientes, numClientes) == true)
               send(arrayClientes[numClientes - 1].socket,"+OK. Usuario registrado\n",100,0);
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Error en el registro\n",100,0);
+          }
+          else if (strcmp(option, "INICIAR-PARTIDA")== 0 && arrayClientes[numClientes - 1].estado == 2) {
+            send(arrayClientes[numClientes - 1].socket,"+OK. Empieza la partida\n",100,0);
+          }
+          else if (strcmp(option, "SALIR")== 0) {
+            send(arrayClientes[numClientes - 1].socket,"+OK. Desconexión procesada\n",100,0);
+          }
+          else {
+            send(arrayClientes[numClientes - 1].socket,"-ERR\n",100,0);
           }
 
 			}while(strcmp(buffer, "FIN")!=0);
@@ -125,6 +134,7 @@ int main ( )
 }
 
 bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numClientes) {
+
   FILE * f;
   char leido[20], aux[20];
   int j;
@@ -140,17 +150,16 @@ bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numCl
     if(strcmp(usuario,leido)==0){
       fclose(f);
       for (j = 0; j < numClientes - 1; j++){
-          if (strcmp(arrayClientes[j].usuario,usuario)==0){
-            bandera=true;
-              break;
-            }
+        if (strcmp(arrayClientes[j].usuario,usuario)==0){
+          bandera=true;
+            break;
           }
-    if(bandera==true)
-      return false;
-    else
-      return true;
+        }
+      if(bandera==true)
+        return false;
+      else
+        return true;
     }
-    return false;
   }
 
   fclose(f);
@@ -158,6 +167,7 @@ bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numCl
 }
 
 bool compruebaPass(char password[], struct clientes arrayClientes[], int numClientes) {
+
   FILE * f;
   char leido[20], aux[20];
   int j;
@@ -173,23 +183,23 @@ bool compruebaPass(char password[], struct clientes arrayClientes[], int numClie
     if(strcmp(password,leido)==0){
       fclose(f);
       for (j = 0; j < numClientes - 1; j++){
-          if (strcmp(arrayClientes[j].password,password)==0){
-            bandera=true;
-              break;
-            }
-          }
-    if(bandera==true)
-      return false;
-    else
-      return true;
+        if (strcmp(arrayClientes[j].password,password)==0){
+          bandera=true;
+            break;
+        }
+      }
+      if(bandera==true)
+        return false;
+      else
+        return true;
+    }
   }
   return false;
-  }
 }
 
 bool registraUsuario(char usuario[],char password[], struct clientes arrayClientes[], int numClientes) {
 
-  if (compruebaUsuario(usuario,arrayClientes,numClientes) == true)
+  if ((compruebaUsuario(usuario,arrayClientes,numClientes) == true) || strlen(usuario) < 2 || strlen(password) < 2)
     return false;
 
   FILE * f;
