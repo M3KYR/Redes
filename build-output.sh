@@ -1,3 +1,3 @@
 #! /bin/sh
 gcc cliente.c -o ./output/cliente
-gcc servidor.c -o ./output/servidor
+gcc servidor.c funciones-servidor.c -o ./output/servidor

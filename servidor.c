@@ -1,28 +1,4 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdbool.h>
-
-#define MAX_CLIENTS 40
-#define MAX_MATCHES 20
-/*
- * El servidor ofrece el servicio de incrementar un número recibido de un cliente
- */
- struct clientes {
-   char usuario[20];
-   char password[20];
-   int socket;
-   int estado;
- };
-
-bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numClientes);
-bool compruebaPass(char password[], struct clientes arrayClientes[], int numClientes);
-bool registraUsuario(char usuario[],char password[], struct clientes arrayClientes[], int numClientes);
+#include "cabeceras-servidor.h"
 
 int main ( )
 {
@@ -97,12 +73,14 @@ int main ( )
           if (strcmp(option, "USUARIO")== 0 && arrayClientes[numClientes - 1].estado == 0) {
             if (compruebaUsuario(aux, arrayClientes, numClientes) == true)
               send(arrayClientes[numClientes - 1].socket,"+OK. Usuario correcto\n",100,0);
+              arrayClientes[numClientes - 1].estado = 1;
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Usuario incorrecto\n",100,0);
           }
           else if (strcmp(option, "PASSWORD")== 0 && arrayClientes[numClientes - 1].estado == 1) {
             if (compruebaPass(aux, arrayClientes, numClientes) == true)
               send(arrayClientes[numClientes - 1].socket,"+OK. Usuario validado\n",100,0);
+              arrayClientes[numClientes - 1].estado = 2;
             else
               send(arrayClientes[numClientes - 1].socket,"-ERR. Error en la validacion\n",100,0);
           }
@@ -131,82 +109,4 @@ int main ( )
 		close(sd);
 		return 0;
 
-}
-
-bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numClientes) {
-
-  FILE * f;
-  char leido[20], aux[20];
-  int j;
-  bool bandera;
-
-  f = fopen("usuario.txt", "r");
-
-  if (f==NULL) {
-    return false;
-  }
-
-  while(fscanf(f,"%s\t%s\n",leido,aux)==2){
-    if(strcmp(usuario,leido)==0){
-      fclose(f);
-      for (j = 0; j < numClientes - 1; j++){
-        if (strcmp(arrayClientes[j].usuario,usuario)==0){
-          bandera=true;
-            break;
-          }
-        }
-      if(bandera==true)
-        return false;
-      else
-        return true;
-    }
-  }
-
-  fclose(f);
-  return false;
-}
-
-bool compruebaPass(char password[], struct clientes arrayClientes[], int numClientes) {
-
-  FILE * f;
-  char leido[20], aux[20];
-  int j;
-  bool bandera;
-
-  f = fopen("usuario.txt", "r");
-
-  if (f==NULL) {
-    return false;
-  }
-
-  while(fscanf(f,"%s\t%s\n",leido,aux)==2){
-    if(strcmp(password,leido)==0){
-      fclose(f);
-      for (j = 0; j < numClientes - 1; j++){
-        if (strcmp(arrayClientes[j].password,password)==0){
-          bandera=true;
-            break;
-        }
-      }
-      if(bandera==true)
-        return false;
-      else
-        return true;
-    }
-  }
-  return false;
-}
-
-bool registraUsuario(char usuario[],char password[], struct clientes arrayClientes[], int numClientes) {
-
-  if ((compruebaUsuario(usuario,arrayClientes,numClientes) == true) || strlen(usuario) < 2 || strlen(password) < 2)
-    return false;
-
-  FILE * f;
-
-  f = fopen("usuario.txt", "a");
-
-  fprintf(f,"%s\t%s\n", usuario,password);
-  fclose(f);
-  return true;
 }
