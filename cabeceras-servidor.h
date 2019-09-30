@@ -17,7 +17,13 @@
    int socket;
    int estado;
  };
-
+ 
+void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numClientes);
+void Usuario(struct clientes * cliente, struct clientes arrayClientes[], char aux[], int numClientes);
+void Password(struct clientes * cliente, struct clientes arrayClientes[], char aux[], int numClientes);
+void Registro(struct clientes * cliente, struct clientes arrayClientes[], int numClientes, char buffer[]);
+void Salir(struct clientes * cliente, int * numClientes);
 bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numClientes);
-bool compruebaPass(char password[], struct clientes arrayClientes[], int numClientes);
+bool compruebaPass(char password[], struct clientes cliente, int numClientes);
 bool registraUsuario(char usuario[],char password[], struct clientes arrayClientes[], int numClientes);
+void desconectaClientes(struct clientes arrayClientes[], int numClientes);
