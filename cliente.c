@@ -1,12 +1,4 @@
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
+#include "cabeceras-cliente.h"
 
 int main ( )
 {
@@ -14,11 +6,15 @@ int main ( )
 	/*----------------------------------------------------
 		Descriptor del socket y buffer de datos
 	-----------------------------------------------------*/
-	int sd;
+	int sd, n, rv;
 	struct sockaddr_in sockname;
 	char buffer[100];
 	socklen_t len_sockname;
+	fd_set readfds;
+	struct timeval tv;
+	tv.tv_sec = 10;
 
+	FD_ZERO(&readfds);
 	/* --------------------------------------------------
 		Se abre el socket
 	---------------------------------------------------*/
@@ -49,16 +45,26 @@ int main ( )
 		perror ("Error de conexión");
 		exit(1);
 	}
-
+	
+	FD_SET(sd,&readfds);
+	n = sd + 1;
 	/* ------------------------------------------------------------------
 		Se transmite la información
 	-------------------------------------------------------------------*/
 
-  if(recv(sd, buffer, 100, 0) == -1)
-    perror("Error en la operación de recv");
-  else {
-    printf("%s",buffer);
-  }
+	rv = select(n, &readfds, NULL, NULL, &tv);
+	if (rv == -1)
+		perror("Error en la operación de select");
+	else if (rv == 0) {
+		printf("Tiempo de espera agotado. El servidor no envió información en 10 segundos\n");
+		exit(-1);
+	}
+  	else {
+		if(recv(sd, buffer, 100, 0) == -1)
+    		perror("Error en la operación de recv");
+  		else
+    		compruebaRespuesta(buffer);
+	}
 	do
 	{
 		puts("Teclee el mensaje a transmitir");
@@ -67,12 +73,20 @@ int main ( )
 		if(send(sd,buffer,100,0) == -1)
 			perror("Error enviando datos");
 
-    if(recv(sd, buffer, 100, 0) == -1)
-      perror("Error en la operación de recv");
-    else
-      printf("%s",buffer);
-
-	}while(strcmp(buffer, "FIN") != 0);
+    	rv = select(n, &readfds, NULL, NULL, &tv);
+		if (rv == -1)
+			perror("Error en la operación de select");
+		else if (rv == 0) {
+			printf("Tiempo de espera agotado. El servidor no envió información en 10 segundos\n");
+			exit(-1);
+		}
+  		else {
+			if(recv(sd, buffer, 100, 0) == -1)
+    			perror("Error en la operación de recv");
+  			else
+    			compruebaRespuesta(buffer);
+		}
+	}while(strcmp(buffer, "+OK. Desconexión procesada\n") != 0);
 
 	close(sd);
 	return 0;

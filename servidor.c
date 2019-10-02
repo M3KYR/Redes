@@ -6,15 +6,20 @@ int main ( )
 	/*----------------------------------------------------
 		Descriptor del socket y buffer de datos
 	-----------------------------------------------------*/
-	int sd, numClientes=0;;
+	int sd, i, n, rv, numClientes=0;;
 	struct sockaddr_in sockname, from;
 	char buffer[100];
 	socklen_t from_len;
+	fd_set readfds;
+	struct timeval tv;
+	tv.tv_sec = 10;
 
 	struct hostent * host;
 
   	struct clientes arrayClientes[MAX_CLIENTS];
 
+	signal(SIGINT, manejadorSeñal);
+	FD_ZERO(&readfds);
 	/* --------------------------------------------------
 		Se abre el socket
 	---------------------------------------------------*/
@@ -53,28 +58,42 @@ int main ( )
 	/*-----------------------------------------------------------------------
 		El servidor acepta una petición
 	------------------------------------------------------------------------ */
-	while(1){
+	do{
 
 		if((arrayClientes[numClientes].socket = accept(sd, (struct sockaddr *)&from, &from_len)) == -1){
 			perror("Error aceptando peticiones");
 			exit(1);
 		}
 		else {
+			FD_SET(arrayClientes[numClientes].socket,&readfds);
+			n = arrayClientes[numClientes].socket + 1;
 			send(arrayClientes[numClientes].socket,"+OK. Usuario conectado\n",100,0);
 			arrayClientes[numClientes].estado = 0;
 			numClientes++;
 		}
 		do
 		{
-			if(recv(arrayClientes[numClientes - 1].socket, buffer, 100, 0) == -1)
-				perror("Error en la operación de recv");
+			rv = select(n, &readfds, NULL, NULL, &tv);
+			if (rv == -1)
+				perror("Error en la operación de select");
+			else if (rv == 0) {
+				printf("Tiempo de espera agotado. Ningún cliente envió información en 10 segundos\n");
+				desconectaClientes(arrayClientes,&numClientes);
+			}
+			else {
+				for (i=0;i<numClientes;i++) {
+					if (FD_ISSET(arrayClientes[i].socket, &readfds))
+						recv(arrayClientes[i].socket, buffer, sizeof(buffer), 0); 
+						compruebaEntrada(buffer,arrayClientes,&numClientes);
+				}
+			}
 
-			compruebaEntrada(buffer,arrayClientes,&numClientes);
 
 		}while(numClientes>0);
 
-		desconectaClientes(arrayClientes,numClientes);
-	}
+	}while(!stop && numClientes>0);
+
+	desconectaClientes(arrayClientes,&numClientes);
 
 	close(sd);
 	
