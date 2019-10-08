@@ -6,9 +6,9 @@ int main ( )
 	/*----------------------------------------------------
 		Descriptor del socket y buffer de datos
 	-----------------------------------------------------*/
-	int sd, new_sd, i, rv, numClientes=0;;
+	int sd, new_sd, i, rv, numClientes=0, numPartidas=0;
 	struct sockaddr_in sockname, from;
-	char buffer[100];
+	char buffer[250];
 	socklen_t from_len;
     fd_set readfds, auxfds;
 	struct timeval tv = {10,0};
@@ -16,7 +16,8 @@ int main ( )
 
 	struct hostent * host;
 
-  	struct clientes arrayClientes[MAX_CLIENTS];
+  	struct cliente arrayClientes[MAX_CLIENTS];
+	struct partida arrayPartidas[MAX_MATCHES];
 
 	signal(SIGINT, manejadorSenal);
 	/* --------------------------------------------------
@@ -33,7 +34,7 @@ int main ( )
     ret = setsockopt( sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	sockname.sin_family = AF_INET;
-	sockname.sin_port = htons(2000);
+	sockname.sin_port = htons(2050);
 	sockname.sin_addr.s_addr =  INADDR_ANY;
 
 	if (bind (sd, (struct sockaddr *) &sockname, sizeof (sockname)) == -1)
@@ -87,12 +88,16 @@ int main ( )
 								arrayClientes[numClientes].estado = 0;
 								numClientes++;
 							}
+							else {
+								send(new_sd,"Número máximo de clientes alcanzado. Inténtalo más tarde\n",100,0);
+								close(new_sd);
+							}
 						}
 					}
 					else {
 						bzero(buffer,sizeof(buffer));
 						if((recv(i, buffer, sizeof(buffer), 0)) > 0)
-							compruebaEntrada(buffer,arrayClientes,&numClientes,i,&readfds);
+							compruebaEntrada(buffer,arrayClientes,&numClientes,arrayPartidas,&numPartidas,i,&readfds);
 					}
 				}
 			}

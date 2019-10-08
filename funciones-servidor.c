@@ -5,11 +5,11 @@
 
 Esta función se encarga de comprobar la opcion introducida por el cliente y ejecutará la función correspondiente a cada opción.
 -----------------------------------------------------*/
-void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numClientes,int socket,fd_set * readfds) {
+void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numClientes, struct partida arrayPartidas[], int * numPartidas, int socket, fd_set * readfds) {
 
 	char aux[20], option[20];
 	int i;
-	struct clientes * cliente;
+	struct cliente * cliente;
 
 	for(i=0; i<*numClientes; i++) {
 		if(socket == arrayClientes[i].socket) {
@@ -27,7 +27,19 @@ void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numCl
 		Password(cliente,arrayClientes,aux,*numClientes);
 	else if (strcmp(option, "REGISTRO") == 0)
 		Registro(cliente,arrayClientes,*numClientes,buffer);
-	else if (strcmp(option, "INICIAR-PARTIDA")== 0 && arrayClientes[*numClientes - 1].estado == 2) {
+	else if (strcmp(option, "INICIAR-PARTIDA")== 0) {
+		iniciaPartida(cliente,arrayClientes,*numClientes,arrayPartidas,numPartidas);
+	}
+	else if (strcmp(option, "FICHAS")== 0) {
+		Fichas(cliente,buffer);
+	}
+	else if (strcmp(option, "COLOCAR-FICHA")== 0) {
+		colocarFicha(cliente,buffer);
+	}
+	else if (strcmp(option, "ROBAR-FICHA")== 0) {
+		send(cliente->socket,"+OK. Empieza la partida\n",100,0);
+	}
+	else if (strcmp(option, "PASO-TURNO")== 0) {
 		send(cliente->socket,"+OK. Empieza la partida\n",100,0);
 	}
 	else if (strcmp(option, "SALIR") == 0)
@@ -45,7 +57,7 @@ Se ejecutará si el cliente ha introducido "USUARIO" en el buffer. La función c
 si es correcto pasa a comprobar el nombre introducido, y si ambas cosas son correctas asignará el nombre de usuario introducido al cliente y
 cambiará el estado del cliente a 1 (usuario: True, contraseña: False). En los dos casos se avisará al usuario del resultado.
 -----------------------------------------------------*/
-void Usuario(struct clientes * cliente, struct clientes arrayClientes[], char aux[], int numClientes) {
+void Usuario(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes) {
 
 	if (cliente->estado == 0) {
 		if (compruebaUsuario(aux, arrayClientes, numClientes) == true) {
@@ -68,7 +80,7 @@ Se ejecutará si el cliente ha introducido "PASSWORD" en el buffer. La función 
 si es correcto pasa a comprobar el password introducido, y si ambas cosas son correctas asignará el password introducido al cliente y
 cambiará el estado del cliente a 2 (usuario: True, contraseña: True). En los dos casos se avisará al usuario del resultado.
 -----------------------------------------------------*/
-void Password(struct clientes * cliente, struct clientes arrayClientes[], char aux[], int numClientes) {
+void Password(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes) {
 
 	if (cliente->estado == 1) {
 		if (compruebaPass(aux, *cliente, numClientes) == true) {
@@ -90,7 +102,7 @@ void Password(struct clientes * cliente, struct clientes arrayClientes[], char a
 Se ejecutará si el cliente ha introducido "REGISTRO" en el buffer. La función comprueba el estado del cliente, que debe ser 0 (usuario: False, contraseña: False),
 si es correcto pasa a comprobar los datos introducidos, y mandará un aviso al cliente informando si el registro se ha llevado a cabo con éxito o no.
 -----------------------------------------------------*/
-void Registro(struct clientes * cliente, struct clientes arrayClientes[], int numClientes, char buffer[]) {
+void Registro(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, char buffer[]) {
 
 	if (cliente->estado == 0) {
 		char aux[20], aux1[20];
@@ -106,6 +118,77 @@ void Registro(struct clientes * cliente, struct clientes arrayClientes[], int nu
 }
 
 /*----------------------------------------------------
+	Funcion iniciaPartida
+
+Se ejecutará si el cliente ha introducido "INICIAR-PARTIDA" en el buffer. La función comprueba el estado del cliente, que debe ser 2 (usuario: True, contraseña: True),
+si es correcto pasa a comprobar la cola de espera para partida:
+	· Si se forma un grupo de dos jugadores, manda un mensaje a ambos indicando que la partida va a comenzar y se procede a empezar el juego.
+	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
+-----------------------------------------------------*/
+void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas) {
+	//COMPRUEBA LA COLA
+	//SI HAY OTRO JUGADOR ESPERANDO Y NO SE SUPERA EL LIMITE DE PARTIDAS:
+		//JUGADOR1 ES EL QUE ESTABA ANTES EN LA COLA
+		//CREA PARTIDA(JUGADOR1,CLIENTE)
+		//COLA.POP(JUGADOR1)
+		cliente->estado = 4;
+		//JUGADOR1->estado = 4
+		send(cliente->socket,"+OK. Empieza la partida\n",100,0);
+		//send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
+	//SI NO HAY OTRO JUGADOR ESPERANDO O SE SUPERA EL LIMITE DE PARTIDAS:
+		//COLA.PUSH(CLIENTE);
+		cliente->estado = 3;
+		send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
+}
+
+/*----------------------------------------------------
+	Funcion Fichas
+
+Se ejecutará si el cliente ha introducido "FICHAS" en el buffer. La función comprueba el estado del cliente, que debe ser 2 (usuario: True, contraseña: True),
+si es correcto pasa a comprobar la cola de espera para partida:
+	· Si se forma un grupo de dos jugadores, manda un mensaje a ambos indicando que la partida va a comenzar y se procede a empezar el juego.
+	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
+-----------------------------------------------------*/
+void Fichas(struct cliente * cliente, char buffer[]) {
+	//COMPRUEBA LA COLA
+	//SI HAY OTRO JUGADOR ESPERANDO Y NO SE SUPERA EL LIMITE DE PARTIDAS:
+		//JUGADOR1 ES EL QUE ESTABA ANTES EN LA COLA
+		//CREA PARTIDA(JUGADOR1,CLIENTE)
+		//COLA.POP(JUGADOR1)
+		//CLIENTE->estado = 4
+		//JUGADOR1->estado = 4
+		//send(cliente->socket,"+OK. Empieza la partida\n",100,0);
+		//send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
+	//SI NO HAY OTRO JUGADOR ESPERANDO O SE SUPERA EL LIMITE DE PARTIDAS:
+		//COLA.PUSH(CLIENTE);
+		//CLIENTE->estado = 3
+		//send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
+}
+
+/*----------------------------------------------------
+	Funcion colocarFicha
+
+Se ejecutará si el cliente ha introducido "COLOCAR-FICHA" en el buffer. La función comprueba el estado del cliente, que debe ser 2 (usuario: True, contraseña: True),
+si es correcto pasa a comprobar la cola de espera para partida:
+	· Si se forma un grupo de dos jugadores, manda un mensaje a ambos indicando que la partida va a comenzar y se procede a empezar el juego.
+	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
+-----------------------------------------------------*/
+void colocarFicha(struct cliente * cliente, char buffer[]) {
+	//COMPRUEBA LA COLA
+	//SI HAY OTRO JUGADOR ESPERANDO Y NO SE SUPERA EL LIMITE DE PARTIDAS:
+		//JUGADOR1 ES EL QUE ESTABA ANTES EN LA COLA
+		//CREA PARTIDA(JUGADOR1,CLIENTE)
+		//COLA.POP(JUGADOR1)
+		//CLIENTE->estado = 4
+		//JUGADOR1->estado = 4
+		//send(cliente->socket,"+OK. Empieza la partida\n",100,0);
+		//send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
+	//SI NO HAY OTRO JUGADOR ESPERANDO O SE SUPERA EL LIMITE DE PARTIDAS:
+		//COLA.PUSH(CLIENTE);
+		//CLIENTE->estado = 3
+		//send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
+}
+/*----------------------------------------------------
 	Funcion Salir
 
 Se ejecutará si el cliente ha introducido "SALIR" en el buffer. La función comprueba el estado del cliente, según el cual realizará una de las siguientes acciones:
@@ -113,7 +196,7 @@ Se ejecutará si el cliente ha introducido "SALIR" en el buffer. La función com
 · Si el cliente estaba jugando, se anulará la partida, se eliminará toda su información y se avisará a los demás jugadores.
 En cualquiera de los casos se avisará al cliente de la desconexión.
 -----------------------------------------------------*/
-void Salir(struct clientes * cliente,struct clientes arrayClientes[],int * numClientes,fd_set * readfds) {
+void Salir(struct cliente * cliente, struct cliente arrayClientes[], int * numClientes, fd_set * readfds) {
 
 	int i;
 
@@ -138,7 +221,7 @@ void Salir(struct clientes * cliente,struct clientes arrayClientes[],int * numCl
 Se ejecutará en la función Usuario(). La función comprueba que el usuario introducido exista en el fichero de clientes "usuario.txt" y, si es así,que no esté en uso por ningún otro cliente.
 Si ambas cosas se cumplen devuelve True (usuario logeado con éxito), mientras que si una de ellas no se cumple devuelve False (fallo en el login).
 -----------------------------------------------------*/
-bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numClientes) {
+bool compruebaUsuario(char usuario[], struct cliente arrayClientes[], int numClientes) {
 
 	FILE * f;
 	char leido[20], aux[20];
@@ -177,7 +260,7 @@ bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numCl
 Se ejecutará en la función Password(). La función comprueba que el password introducido exista en el fichero de clientes "usuario.txt" y, si es así, que no esté en uso por ningún otro cliente.
 Si ambas cosas se cumplen devuelve True (usuario logeado con éxito), mientras que si una de ellas no se cumple devuelve False (fallo en el login).
 -----------------------------------------------------*/
-bool compruebaPass(char password[], struct clientes cliente, int numClientes) {
+bool compruebaPass(char password[], struct cliente cliente, int numClientes) {
 
 	FILE * f;
 	char leido[20], aux[20];
@@ -207,7 +290,7 @@ Se ejecutará en la función Registro(). La función comprueba que el usuario in
 tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
 una de ellas no se cumple devuelve False (fallo en el registro).
 -----------------------------------------------------*/
-bool registraUsuario(char usuario[],char password[], struct clientes arrayClientes[], int numClientes) {
+bool registraUsuario(char usuario[], char password[], struct cliente arrayClientes[], int numClientes) {
 
 	if (compruebaUsuario(usuario,arrayClientes,numClientes) == true || strlen(usuario) < 2 || strlen(password) < 2)
 		return false;
@@ -229,7 +312,7 @@ bool registraUsuario(char usuario[],char password[], struct clientes arrayClient
 
 Se ejecutará al terminar el bucle principal del servidor (mediante Ctrl+C) y desconectará a todos los clientes conectados al servidor.
 -----------------------------------------------------*/
-void desconectaClientes(struct clientes arrayClientes[], int * numClientes,fd_set * readfds) {
+void desconectaClientes(struct cliente arrayClientes[], int * numClientes, fd_set * readfds) {
 
 	int i;
 
