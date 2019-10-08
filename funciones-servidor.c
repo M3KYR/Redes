@@ -2,17 +2,17 @@
 
 /*----------------------------------------------------
 	Funcion compruebaEntrada
-	
+
 Esta función se encarga de comprobar la opcion introducida por el cliente y ejecutará la función correspondiente a cada opción.
 -----------------------------------------------------*/
 void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numClientes) {
 
 	char aux[20], option[20];
-	
+
 	struct clientes * cliente = &arrayClientes[*numClientes -1];
- 
+
 	sscanf(buffer,"%s %s", option, aux);
-	
+
 	if (strcmp(option, "USUARIO") == 0)
 		Usuario(cliente,arrayClientes,aux,*numClientes);
 	else if (strcmp(option, "PASSWORD") == 0)
@@ -27,12 +27,12 @@ void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numCl
 	else {
 		send(cliente->socket,"-ERR\n",100,0);
 	}
-	
+
 }
 
 /*----------------------------------------------------
 	Funcion Usuario
-	
+
 Se ejecutará si el cliente ha introducido "USUARIO" en el buffer. La función comprueba el estado del cliente, que debe ser 0 (usuario: False, contraseña: False),
 si es correcto pasa a comprobar el nombre introducido, y si ambas cosas son correctas asignará el nombre de usuario introducido al cliente y
 cambiará el estado del cliente a 1 (usuario: True, contraseña: False). En los dos casos se avisará al usuario del resultado.
@@ -50,12 +50,12 @@ void Usuario(struct clientes * cliente, struct clientes arrayClientes[], char au
 	}
 	else
 		send(cliente->socket,"-ERR\n",100,0);
-	
+
 }
 
 /*----------------------------------------------------
 	Funcion Password
-	
+
 Se ejecutará si el cliente ha introducido "PASSWORD" en el buffer. La función comprueba el estado del cliente, que debe ser 1 (usuario: True, contraseña: False),
 si es correcto pasa a comprobar el password introducido, y si ambas cosas son correctas asignará el password introducido al cliente y
 cambiará el estado del cliente a 2 (usuario: True, contraseña: True). En los dos casos se avisará al usuario del resultado.
@@ -73,12 +73,12 @@ void Password(struct clientes * cliente, struct clientes arrayClientes[], char a
 	}
 	else
 		send(cliente->socket,"-ERR\n",100,0);
-              
+
 }
 
 /*----------------------------------------------------
 	Funcion Registro
-	
+
 Se ejecutará si el cliente ha introducido "REGISTRO" en el buffer. La función comprueba el estado del cliente, que debe ser 0 (usuario: False, contraseña: False),
 si es correcto pasa a comprobar los datos introducidos, y mandará un aviso al cliente informando si el registro se ha llevado a cabo con éxito o no.
 -----------------------------------------------------*/
@@ -94,12 +94,12 @@ void Registro(struct clientes * cliente, struct clientes arrayClientes[], int nu
 	}
 	else
 		send(cliente->socket,"-ERR\n",100,0);
-          
+
 }
 
 /*----------------------------------------------------
 	Funcion Salir
-	
+
 Se ejecutará si el cliente ha introducido "SALIR" en el buffer. La función comprueba el estado del cliente, según el cual realizará una de las siguientes acciones:
 · Si el cliente estaba esperando para una partida, se le eliminará de la cola de espera.
 · Si el cliente estaba jugando, se anulará la partida, se eliminará toda su información y se avisará a los demás jugadores.
@@ -110,12 +110,12 @@ void Salir(struct clientes * cliente,int * numClientes) {
 	*numClientes = *numClientes - 1;
 	send(cliente->socket,"+OK. Desconexión procesada\n",100,0);
 	close(cliente->socket);
-	
+
 }
 
 /*----------------------------------------------------
 	Funcion compruebaUsuario
-	
+
 Se ejecutará en la función Usuario(). La función comprueba que el usuario introducido exista en el fichero de clientes "usuario.txt" y, si es así,que no esté en uso por ningún otro cliente.
 Si ambas cosas se cumplen devuelve True (usuario logeado con éxito), mientras que si una de ellas no se cumple devuelve False (fallo en el login).
 -----------------------------------------------------*/
@@ -124,7 +124,7 @@ bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numCl
 	FILE * f;
 	char leido[20], aux[20];
 	int j;
-	bool bandera;
+	bool bandera = false;
 
 	f = fopen("usuario.txt", "r");
 
@@ -148,14 +148,13 @@ bool compruebaUsuario(char usuario[], struct clientes arrayClientes[], int numCl
 	}
 
   fclose(f);
-  
   return false;
-  
+
 }
 
 /*----------------------------------------------------
 	Funcion compruebaPass
-	
+
 Se ejecutará en la función Password(). La función comprueba que el password introducido exista en el fichero de clientes "usuario.txt" y, si es así, que no esté en uso por ningún otro cliente.
 Si ambas cosas se cumplen devuelve True (usuario logeado con éxito), mientras que si una de ellas no se cumple devuelve False (fallo en el login).
 -----------------------------------------------------*/
@@ -184,7 +183,7 @@ bool compruebaPass(char password[], struct clientes cliente, int numClientes) {
 
 /*----------------------------------------------------
 	Funcion registraUsuario
-	
+
 Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
 tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
 una de ellas no se cumple devuelve False (fallo en el registro).
@@ -199,22 +198,22 @@ bool registraUsuario(char usuario[],char password[], struct clientes arrayClient
 	f = fopen("usuario.txt", "a");
 
 	fprintf(f,"%s\t%s\n", usuario,password);
-  
+
 	fclose(f);
-  
+
 	return true;
-  
+
 }
 
 /*----------------------------------------------------
 	Funcion desconectaClientes
-	
+
 Se ejecutará al terminar el bucle principal del servidor (mediante Ctrl+C) y desconectará a todos los clientes conectados al servidor.
 -----------------------------------------------------*/
 void desconectaClientes(struct clientes arrayClientes[], int * numClientes) {
 
 	int i;
-	
+
 	for(i=0;i<*numClientes;i++) {
 		Salir(&arrayClientes[i],numClientes);
 	}
@@ -223,10 +222,10 @@ void desconectaClientes(struct clientes arrayClientes[], int * numClientes) {
 
 /*----------------------------------------------------
 	Funcion manejadorSeñal
-	
+
 Se ejecutará al presionar Ctrl+C y finalizará el bucle principal.
 -----------------------------------------------------*/
-void manejadorSeñal(int sig) {
+void manejadorSenal(int sig) {
 
 	stop = 1;
 

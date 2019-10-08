@@ -18,7 +18,7 @@ int main ( )
 
   	struct clientes arrayClientes[MAX_CLIENTS];
 
-	signal(SIGINT, manejadorSeñal);
+	signal(SIGINT, manejadorSenal);
 	FD_ZERO(&readfds);
 	/* --------------------------------------------------
 		Se abre el socket
@@ -83,20 +83,20 @@ int main ( )
 			else {
 				for (i=0;i<numClientes;i++) {
 					if (FD_ISSET(arrayClientes[i].socket, &readfds))
-						recv(arrayClientes[i].socket, buffer, sizeof(buffer), 0); 
+						recv(arrayClientes[i].socket, buffer, sizeof(buffer), 0);
 						compruebaEntrada(buffer,arrayClientes,&numClientes);
 				}
 			}
 
 
-		}while(numClientes>0);
+		}while(!stop && numClientes>0);
 
 	}while(!stop && numClientes>0);
 
 	desconectaClientes(arrayClientes,&numClientes);
 
 	close(sd);
-	
+
 	return 0;
 
 }
