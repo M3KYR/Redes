@@ -6,20 +6,19 @@ int main ( )
 	/*----------------------------------------------------
 		Descriptor del socket y buffer de datos
 	-----------------------------------------------------*/
-	int sd, i, n, rv, numClientes=0;;
+	int sd, new_sd, i, rv, numClientes=0;;
 	struct sockaddr_in sockname, from;
 	char buffer[100];
 	socklen_t from_len;
-	fd_set readfds;
-	struct timeval tv;
-	tv.tv_sec = 10;
+    fd_set readfds, auxfds;
+	struct timeval tv = {10,0};
+	int on, ret;
 
 	struct hostent * host;
 
   	struct clientes arrayClientes[MAX_CLIENTS];
 
 	signal(SIGINT, manejadorSenal);
-	FD_ZERO(&readfds);
 	/* --------------------------------------------------
 		Se abre el socket
 	---------------------------------------------------*/
@@ -30,6 +29,8 @@ int main ( )
     		exit (1);
 	}
 
+    on=1;
+    ret = setsockopt( sd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	sockname.sin_family = AF_INET;
 	sockname.sin_port = htons(2000);
@@ -55,45 +56,51 @@ int main ( )
 		exit(1);
 	}
 
+    FD_ZERO(&readfds);
+    FD_ZERO(&auxfds);
+    FD_SET(sd,&readfds);
+    FD_SET(0,&readfds);
 	/*-----------------------------------------------------------------------
 		El servidor acepta una petición
 	------------------------------------------------------------------------ */
 	do{
-
-		if((arrayClientes[numClientes].socket = accept(sd, (struct sockaddr *)&from, &from_len)) == -1){
-			perror("Error aceptando peticiones");
-			exit(1);
+		auxfds = readfds;
+		rv = select(FD_SETSIZE, &auxfds, NULL, NULL, &tv);
+		if (rv == -1)
+			perror("Error en la operación de select");
+		else if (rv == 0) {
+			printf("Tiempo de espera agotado. Ningún cliente envió información en 10 segundos\n");
 		}
 		else {
-			FD_SET(arrayClientes[numClientes].socket,&readfds);
-			n = arrayClientes[numClientes].socket + 1;
-			send(arrayClientes[numClientes].socket,"+OK. Usuario conectado\n",100,0);
-			arrayClientes[numClientes].estado = 0;
-			numClientes++;
-		}
-		do
-		{
-			rv = select(n, &readfds, NULL, NULL, &tv);
-			if (rv == -1)
-				perror("Error en la operación de select");
-			else if (rv == 0) {
-				printf("Tiempo de espera agotado. Ningún cliente envió información en 10 segundos\n");
-				desconectaClientes(arrayClientes,&numClientes);
-			}
-			else {
-				for (i=0;i<numClientes;i++) {
-					if (FD_ISSET(arrayClientes[i].socket, &readfds))
-						recv(arrayClientes[i].socket, buffer, sizeof(buffer), 0);
-						compruebaEntrada(buffer,arrayClientes,&numClientes);
+			for (i=0;i<FD_SETSIZE;i++) {
+				if (FD_ISSET(i, &auxfds)) {
+					if(i==sd) {
+						if((new_sd = accept(sd, (struct sockaddr *)&from, &from_len)) == -1){
+							perror("Error aceptando peticiones");
+							exit(1);
+						}
+						else {
+							if(numClientes < MAX_CLIENTS) {
+								arrayClientes[numClientes].socket = new_sd;
+								FD_SET(new_sd,&readfds);
+								send(new_sd,"+OK. Usuario conectado\n",100,0);
+								arrayClientes[numClientes].estado = 0;
+								numClientes++;
+							}
+						}
+					}
+					else {
+						bzero(buffer,sizeof(buffer));
+						if((recv(i, buffer, sizeof(buffer), 0)) > 0)
+							compruebaEntrada(buffer,arrayClientes,&numClientes,i,&readfds);
+					}
 				}
 			}
+		}
 
+	}while(!stop && rv > 0);
 
-		}while(!stop && numClientes>0);
-
-	}while(!stop && numClientes>0);
-
-	desconectaClientes(arrayClientes,&numClientes);
+	desconectaClientes(arrayClientes,&numClientes,&readfds);
 
 	close(sd);
 

@@ -5,12 +5,20 @@
 
 Esta función se encarga de comprobar la opcion introducida por el cliente y ejecutará la función correspondiente a cada opción.
 -----------------------------------------------------*/
-void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numClientes) {
+void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numClientes,int socket,fd_set * readfds) {
 
 	char aux[20], option[20];
+	int i;
+	struct clientes * cliente;
 
-	struct clientes * cliente = &arrayClientes[*numClientes -1];
+	for(i=0; i<*numClientes; i++) {
+		if(socket == arrayClientes[i].socket) {
+			cliente = &arrayClientes[i];
+		}
+	}
 
+	bzero(option,sizeof(option));
+	bzero(aux,sizeof(aux));
 	sscanf(buffer,"%s %s", option, aux);
 
 	if (strcmp(option, "USUARIO") == 0)
@@ -23,7 +31,7 @@ void compruebaEntrada(char * buffer,struct clientes arrayClientes[], int * numCl
 		send(cliente->socket,"+OK. Empieza la partida\n",100,0);
 	}
 	else if (strcmp(option, "SALIR") == 0)
-		Salir(cliente,numClientes);
+		Salir(cliente,arrayClientes,numClientes,readfds);
 	else {
 		send(cliente->socket,"-ERR\n",100,0);
 	}
@@ -105,12 +113,23 @@ Se ejecutará si el cliente ha introducido "SALIR" en el buffer. La función com
 · Si el cliente estaba jugando, se anulará la partida, se eliminará toda su información y se avisará a los demás jugadores.
 En cualquiera de los casos se avisará al cliente de la desconexión.
 -----------------------------------------------------*/
-void Salir(struct clientes * cliente,int * numClientes) {
+void Salir(struct clientes * cliente,struct clientes arrayClientes[],int * numClientes,fd_set * readfds) {
 
-	*numClientes = *numClientes - 1;
+	int i;
+
 	send(cliente->socket,"+OK. Desconexión procesada\n",100,0);
 	close(cliente->socket);
+	FD_CLR(cliente->socket,readfds);
 
+	for(i=0;i<*numClientes - 1;i++) {
+		if(arrayClientes[i].socket == cliente->socket)
+			break;
+	}
+	for(;i<*numClientes - 1;i++) {
+		arrayClientes[i] = arrayClientes[i+1];
+		printf("He hecho algun cambio\n");
+	}
+	*numClientes = *numClientes - 1;
 }
 
 /*----------------------------------------------------
@@ -210,12 +229,12 @@ bool registraUsuario(char usuario[],char password[], struct clientes arrayClient
 
 Se ejecutará al terminar el bucle principal del servidor (mediante Ctrl+C) y desconectará a todos los clientes conectados al servidor.
 -----------------------------------------------------*/
-void desconectaClientes(struct clientes arrayClientes[], int * numClientes) {
+void desconectaClientes(struct clientes arrayClientes[], int * numClientes,fd_set * readfds) {
 
 	int i;
 
 	for(i=0;i<*numClientes;i++) {
-		Salir(&arrayClientes[i],numClientes);
+		Salir(&arrayClientes[i],arrayClientes,numClientes,readfds);
 	}
 
 }
