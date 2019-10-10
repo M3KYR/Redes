@@ -62,7 +62,7 @@ int main (int argc, char * argv[])
 	{
 		auxfds = readfds;
 
-		rv = select(sd + 1, &auxfds, NULL, NULL, &tv);
+		rv = select(sd + 1, &auxfds, NULL, NULL, NULL);
 		if (rv == -1)
 			perror("Error en la operación de select");
 		else if (rv == 0) {

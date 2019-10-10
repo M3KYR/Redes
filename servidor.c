@@ -6,7 +6,7 @@ int main ( )
 	/*----------------------------------------------------
 		Descriptor del socket y buffer de datos
 	-----------------------------------------------------*/
-	int sd, new_sd, i, rv, numClientes=0, numPartidas=0;
+	int sd, new_sd, i, rv, numClientes=0, numPartidas=0, nCola=0;
 	struct sockaddr_in sockname, from;
 	char buffer[250];
 	socklen_t from_len;
@@ -18,6 +18,7 @@ int main ( )
 
   	struct cliente arrayClientes[MAX_CLIENTS];
 	struct partida arrayPartidas[MAX_MATCHES];
+	struct cliente cola[MAX_QUEUE];
 
 	signal(SIGINT, manejadorSenal);
 	/* --------------------------------------------------
@@ -66,7 +67,7 @@ int main ( )
 	------------------------------------------------------------------------ */
 	do{
 		auxfds = readfds;
-		rv = select(FD_SETSIZE, &auxfds, NULL, NULL, &tv);
+		rv = select(FD_SETSIZE, &auxfds, NULL, NULL, NULL);
 		if (rv == -1)
 			perror("Error en la operación de select");
 		else if (rv == 0) {
@@ -97,7 +98,7 @@ int main ( )
 					else {
 						bzero(buffer,sizeof(buffer));
 						if((recv(i, buffer, sizeof(buffer), 0)) > 0)
-							compruebaEntrada(buffer,arrayClientes,&numClientes,arrayPartidas,&numPartidas,i,&readfds);
+							compruebaEntrada(buffer,arrayClientes,&numClientes,arrayPartidas,&numPartidas,cola,&nCola,i,&readfds);
 					}
 				}
 			}
