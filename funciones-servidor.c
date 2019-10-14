@@ -123,8 +123,8 @@ si es correcto pasa a comprobar la cola de espera para partida:
 	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
 -----------------------------------------------------*/
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola) {
-	//COMPRUEBA LA COLA
-	if (cliente->estado = 2) {
+
+	if (cliente->estado == 2) {
 		
 		if (*nCola>0 && *numPartidas<MAX_MATCHES) {
 			struct cliente * jugador1 = popCola(cola,nCola);
@@ -134,7 +134,7 @@ void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int
 			cliente->estado = 4;
 			jugador1->estado = 4;
 		}
-		else if(*nCola>0 && *numPartidas==MAX_MATCHES || *nCola==0) {
+		else if((*nCola>0 && *numPartidas==MAX_MATCHES) || *nCola==0) {
 			send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
 			cliente->estado = 3;
 			pushCola(cliente,&cola,nCola);
@@ -291,39 +291,39 @@ bool registraUsuario(char usuario[], char password[], struct cliente arrayClient
 /*----------------------------------------------------
 	Funcion creaPartida
 
-Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
-tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
-una de ellas no se cumple devuelve False (fallo en el registro).
+Se ejecutará en la función iniciaPartida(). La función creará una partida en el array de partidas con el último jugador que llamó a la función iniciaPartida() y el primer jugador de la cola.
+Aumentará el número de partidas en uno y pasa a asignar las fichas de la partida. 
 -----------------------------------------------------*/
 void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct partida arrayPartidas[], int * numPartidas) {
 	
-	arrayPartidas[*numPartidas].jugador1 = jugador1;
+	struct partida * partida = &arrayPartidas[*numPartidas];
+
+	partida->jugador1 = jugador1;
 	
-	arrayPartidas[*numPartidas].jugador1 = jugador2;
+	partida->jugador2 = jugador2;
 	
 	*numPartidas = *numPartidas + 1;
 	
-	Fichas(jugador1,jugador2);
+	Fichas(jugador1,jugador2, partida);
 }
 
 /*----------------------------------------------------
 	Funcion Fichas
 
-Se ejecutará si el cliente ha introducido "FICHAS" en el buffer. La función comprueba el estado del cliente, que debe ser 2 (usuario: True, contraseña: True),
-si es correcto pasa a comprobar la cola de espera para partida:
-	· Si se forma un grupo de dos jugadores, manda un mensaje a ambos indicando que la partida va a comenzar y se procede a empezar el juego.
-	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
+Se ejecutará en la función creaPartida. La función creará las 28 fichas para la partida y las asignará aleatoriamente a los jugadores y al montón.
 -----------------------------------------------------*/
-void Fichas(struct cliente * jugador1, struct cliente * jugador2) {
+void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partida) {
+
 	int aux;
+
+	struct fichas * fichas[28];
+	
 	srand(time(NULL));
 }
 /*----------------------------------------------------
 	Funcion popCola
 
-Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
-tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
-una de ellas no se cumple devuelve False (fallo en el registro).
+Se ejecutará en la función iniciaPartida(). La función devuelve el primer jugador que entró a la cola y disminuye el tamaño de esta.
 -----------------------------------------------------*/
 struct cliente * popCola(struct cliente cola[],int * nCola) {
 
@@ -344,9 +344,7 @@ struct cliente * popCola(struct cliente cola[],int * nCola) {
 /*----------------------------------------------------
 	Funcion pushCola
 
-Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
-tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
-una de ellas no se cumple devuelve False (fallo en el registro).
+Se ejecutará en la función iniciaPartida(). La función introduce un jugador en la cola y aumenta el tamaño de esta.
 -----------------------------------------------------*/
 void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola) {
 
@@ -379,7 +377,5 @@ Se ejecutará al presionar Ctrl+C y finalizará el bucle principal.
 void manejadorSenal(int sig) {
 
 	stop = 1;
-
-	exit(-1);
 
 }

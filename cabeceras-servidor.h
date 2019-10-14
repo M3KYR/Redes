@@ -42,7 +42,7 @@ void Usuario(struct cliente * cliente, struct cliente arrayClientes[], char aux[
 void Password(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes);
 void Registro(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, char buffer[]);
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola);
-void Fichas(struct cliente * jugador1, struct cliente * jugador2);
+void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partidas);
 void colocarFicha(struct cliente * cliente, char buffer[]);
 void Salir(struct cliente * cliente, struct cliente arrayClientes[], int * numClientes,fd_set * auxfds);
 bool compruebaUsuario(char usuario[], struct cliente arrayClientes[], int numClientes);
