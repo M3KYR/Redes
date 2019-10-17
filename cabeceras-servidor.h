@@ -28,8 +28,8 @@ struct cliente {
 struct partida {
   struct cliente * jugador1;
   struct cliente * jugador2;
-  struct fichas * monton[14];
-  char tablero[200];
+  struct ficha * monton[14];
+  int tablero[56];
 };
 
 struct ficha {
@@ -42,12 +42,17 @@ void Usuario(struct cliente * cliente, struct cliente arrayClientes[], char aux[
 void Password(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes);
 void Registro(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, char buffer[]);
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola);
-void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partidas);
 void colocarFicha(struct cliente * cliente, char buffer[]);
+void robarFicha(struct cliente * cliente);
+void pasoTurno(struct cliente * cliente);
 void Salir(struct cliente * cliente, struct cliente arrayClientes[], int * numClientes,fd_set * auxfds);
 bool compruebaUsuario(char usuario[], struct cliente arrayClientes[], int numClientes);
 bool compruebaPass(char password[], struct cliente cliente, int numClientes);
 bool registraUsuario(char usuario[], char password[], struct cliente arrayClientes[], int numClientes);
+void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct partida arrayPartidas[], int * numPartidas);
+void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partidas);
+bool compruebaFichas(struct cliente * cliente);
+void correPosiciones(struct partida * partida);
 struct cliente * popCola(struct cliente cola[],int * nCola);
 void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola);
 void desconectaClientes(struct cliente arrayClientes[], int * numClientes, fd_set * readfds);
