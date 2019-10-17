@@ -123,18 +123,18 @@ si es correcto pasa a comprobar la cola de espera para partida:
 	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
 -----------------------------------------------------*/
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola) {
-
-	if (cliente->estado == 2) {
+	//COMPRUEBA LA COLA
+	if (cliente->estado = 2) {
 		
 		if (*nCola>0 && *numPartidas<MAX_MATCHES) {
 			struct cliente * jugador1 = popCola(cola,nCola);
-			//creaPartida(jugador1,cliente,arrayPartidas,numPartidas);
+			creaPartida(jugador1,cliente,arrayPartidas,numPartidas,cliente->partida->monton);
 			send(cliente->socket,"+OK. Empieza la partida\n",100,0);
 			send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
 			cliente->estado = 4;
 			jugador1->estado = 4;
 		}
-		else if((*nCola>0 && *numPartidas==MAX_MATCHES) || *nCola==0) {
+		else if(*nCola>0 && *numPartidas==MAX_MATCHES || *nCola==0) {
 			send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
 			cliente->estado = 3;
 			pushCola(cliente,&cola,nCola);
@@ -155,19 +155,80 @@ si es correcto pasa a comprobar la cola de espera para partida:
 	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
 -----------------------------------------------------*/
 void colocarFicha(struct cliente * cliente, char buffer[]) {
-	//COMPRUEBA LA COLA
-	//SI HAY OTRO JUGADOR ESPERANDO Y NO SE SUPERA EL LIMITE DE PARTIDAS:
-		//JUGADOR1 ES EL QUE ESTABA ANTES EN LA COLA
-		//CREA PARTIDA(JUGADOR1,CLIENTE)
-		//COLA.POP(JUGADOR1)
-		//CLIENTE->estado = 4
-		//JUGADOR1->estado = 4
-		//send(cliente->socket,"+OK. Empieza la partida\n",100,0);
-		//send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
-	//SI NO HAY OTRO JUGADOR ESPERANDO O SE SUPERA EL LIMITE DE PARTIDAS:
-		//COLA.PUSH(CLIENTE);
-		//CLIENTE->estado = 3
-		//send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
+
+	int n1,n2,pos;
+	char ext[]="ola";
+	//sscanf(buffer,"COLOCAR-FICHA |%d|%d|,%s", n1, n2, ext);
+
+	for(int i=0;i<21;i++){
+		if(cliente->fichas[i]->num1==n1 && cliente->fichas[i]->num2==n2){
+			pos=i;
+		}
+	}
+
+	int distancia=strlen(cliente->partida->tablero);
+
+	int primero=cliente->partida->tablero[1];
+	int ultimo=cliente->partida->tablero[distancia-2];
+
+	if(strcmp(ext,"derecha")==0){
+		if(primero==cliente->fichas[pos]->num1){
+			
+
+			eliminaFicha(cliente,pos);
+		}else{
+			send(cliente->socket,"-ERR. La ficha no puede ser colocada\n",100,0);
+		}
+	}else if(strcmp(ext,"izquierda")==0){
+		if(ultimo==cliente->fichas[pos]->num2){
+		char aux; //(char) cliente->fichas[pos];
+		
+			strcpy(cliente->partida->tablero,aux);
+			eliminaFicha(cliente,pos);
+		}else{
+			send(cliente->socket,"-ERR. La ficha no puede ser colocada\n",100,0);
+		}
+	}
+}
+/*----------------------------------------------------
+	Funcion robarFicha
+
+	el cliente roba un ficha de monton
+-----------------------------------------------------*/
+void robarFicha(struct cliente * cliente){
+
+	int distancia=strlen(cliente->partida->tablero);
+
+	int primero=cliente->partida->tablero[1];
+	int ultimo=cliente->partida->tablero[distancia-2];
+
+	for(int i=0;i<21;i++){
+		if(primero==cliente->fichas[i]->num1 || ultimo==cliente->fichas[i]->num2){
+			send(cliente->socket,"+Ok. No es necesario robar ficha\n",100,0);
+		}
+	}
+	srand(time(NULL));
+
+	int n=sizeof(cliente->partida->monton) / sizeof(cliente->partida->monton[0]);
+
+	if(n==0){
+		send(cliente->socket,"-ERR. No quedan ficahs\n",100,0);
+	}
+
+	int pos=rand()%n;
+	//struct ficha=cliente->partida->monton[pos];
+	for(int i=pos;i<n;i++){
+		cliente->partida->monton[i]=cliente->partida->monton[i+1];
+	}
+		send(cliente->socket,"FICHA |%d|%d|\n",100,0);//donde meto los valores de la ficha
+}
+/*----------------------------------------------------
+	Funcion pasarTurno
+
+	el cliente pasa turno al contringante
+-----------------------------------------------------*/
+void pasarTurno(struct cliente * cliente){
+
 }
 /*----------------------------------------------------
 	Funcion Salir
@@ -291,39 +352,153 @@ bool registraUsuario(char usuario[], char password[], struct cliente arrayClient
 /*----------------------------------------------------
 	Funcion creaPartida
 
-Se ejecutará en la función iniciaPartida(). La función creará una partida en el array de partidas con el último jugador que llamó a la función iniciaPartida() y el primer jugador de la cola.
-Aumentará el número de partidas en uno y pasa a asignar las fichas de la partida. 
+Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
+tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
+una de ellas no se cumple devuelve False (fallo en el registro).
 -----------------------------------------------------*/
-void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct partida arrayPartidas[], int * numPartidas) {
+void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct partida arrayPartidas[], int * numPartidas,struct ficha * montonT[]) {
 	
-	struct partida * partida = &arrayPartidas[*numPartidas];
-
-	partida->jugador1 = jugador1;
+	arrayPartidas[*numPartidas].jugador1 = jugador1;
 	
-	partida->jugador2 = jugador2;
+	arrayPartidas[*numPartidas].jugador1 = jugador2;
 	
 	*numPartidas = *numPartidas + 1;
 	
-	Fichas(jugador1,jugador2, partida);
-}
+	Fichas(jugador1,jugador2,montonT,arrayPartidas,numPartidas);
 
+//while(//mi polla)
+
+//alternar turnos o algo asi
+
+}
+/*----------------------------------------------------
+	Funcion inicioFichas
+	
+	inicia el vector de fichas
+-----------------------------------------------------*/
+void inicioFichas(struct ficha * montonT[]){
+	
+	montonT[0]->num1=0;
+	montonT[0]->num2=0;
+	montonT[1]->num1=1;
+	montonT[1]->num2=1;
+	montonT[2]->num1=2;
+	montonT[2]->num2=2;
+	montonT[3]->num1=3;
+	montonT[3]->num2=3;
+	montonT[4]->num1=4;
+	montonT[4]->num2=4;
+	montonT[5]->num1=5;
+	montonT[5]->num2=5;
+	montonT[6]->num1=6;
+	montonT[6]->num2=6;
+///
+	montonT[7]->num1=0;
+	montonT[7]->num2=1;
+	montonT[8]->num1=0;
+	montonT[8]->num2=2;
+	montonT[9]->num1=0;
+	montonT[9]->num2=3;
+	montonT[10]->num1=0;
+	montonT[10]->num2=4;
+	montonT[11]->num1=0;
+	montonT[11]->num2=5;
+	montonT[12]->num1=0;
+	montonT[12]->num2=6;
+///
+	montonT[13]->num1=1;
+	montonT[13]->num2=2;
+	montonT[14]->num1=1;
+	montonT[14]->num2=3;
+	montonT[15]->num1=1;
+	montonT[15]->num2=4;
+	montonT[16]->num1=1;
+	montonT[16]->num2=5;
+	montonT[17]->num1=1;
+	montonT[17]->num2=6;
+	montonT[18]->num1=2;
+	montonT[18]->num2=3;
+///
+	montonT[19]->num1=2;
+	montonT[19]->num2=4;
+	montonT[20]->num1=2;
+	montonT[20]->num2=5;
+	montonT[21]->num1=2;
+	montonT[21]->num2=6;
+	montonT[22]->num1=3;
+	montonT[22]->num2=4;
+	montonT[23]->num1=3;
+	montonT[23]->num2=5;
+	montonT[24]->num1=3;
+	montonT[24]->num2=6;
+///
+	montonT[25]->num1=4;
+	montonT[25]->num2=5;
+	montonT[26]->num1=4;
+	montonT[26]->num2=6;
+	montonT[27]->num1=5;
+	montonT[27]->num2=6;
+
+}
 /*----------------------------------------------------
 	Funcion Fichas
 
-Se ejecutará en la función creaPartida. La función creará las 28 fichas para la partida y las asignará aleatoriamente a los jugadores y al montón.
+reparte las fichas entre los jugadores
 -----------------------------------------------------*/
-void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partida) {
+void Fichas(struct cliente * jugador1, struct cliente * jugador2,struct ficha * montonT[],struct partida arrayPartidas[], int * numPartidas) {
 
-	int aux;
-
-	struct fichas * fichas[28];
-	
+	int aux=0;
 	srand(time(NULL));
+
+	inicioFichas(montonT);
+
+	int cogida[14];//posicion de las fichas para jugadores
+	bool bandera=false;
+
+	while(aux!=14){
+	     int pos=rand()%28;
+		for(int i=0;i<14;i++){
+		  if(cogida[i]==pos){
+		   bandera=true;
+		   break;
+		  }else{
+		   bandera=false;
+		  }
+		}
+
+		if(bandera=false){
+		  cogida[aux]=pos;
+		  aux++;
+		}
+	}
+
+	/*for(int i=0;i<28;i++){	se ma io la cabeza en esto
+	int aux1=0; 
+	int aux2=0,aux3=0;
+	   for(int j=0;j<14;j++){
+		if(i!=cogida[j] && aux1<14){
+		 	arrayPartidas[numPartidas]->monton[aux1]->num1=montonT[pos]->num1;//esto de arrayPartidas esta pendiente de ver
+			arrayPartidas[numPartidas]->monton[aux1]->num2=montonT[pos]->num2;
+			aux1++;
+		}else{
+			if(aux2<7){
+			  jugador1->fichas[aux2]=montonT[i];
+			  aux2++;
+			}else{
+			  jugador2->fichas[aux3]=montonT[i];
+			  aux3++;
+			}
+	   	}
+	   }
+	}*/
+
 }
 /*----------------------------------------------------
 	Funcion popCola
 
-Se ejecutará en la función iniciaPartida(). La función devuelve el primer jugador que entró a la cola y disminuye el tamaño de esta.
+Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
+tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
+una de ellas no se cumple devuelve False (fallo en el registro).
 -----------------------------------------------------*/
 struct cliente * popCola(struct cliente cola[],int * nCola) {
 
@@ -340,11 +515,24 @@ struct cliente * popCola(struct cliente cola[],int * nCola) {
 	return cliente;
 	
 }
+/*----------------------------------------------------
+	Funcion eliminaficha
 
+-----------------------------------------------------*/
+void eliminaFicha(struct cliente * cliente,int pos) {
+
+	
+	for (int i = pos; i < 21; i++) {
+		cliente->fichas[i] = cliente->fichas[i+1];
+	}
+	
+}
 /*----------------------------------------------------
 	Funcion pushCola
 
-Se ejecutará en la función iniciaPartida(). La función introduce un jugador en la cola y aumenta el tamaño de esta.
+Se ejecutará en la función Registro(). La función comprueba que el usuario introducido no exista en el fichero de clientes "usuario.txt" y que el usuario y el password introducidos
+tengan un tamaño mínimo. Si ambas cosas se cumplen, guarda el usuario y password en el fichero "usuario.txt" y devuelve True (usuario registrado con éxito), mientras que si
+una de ellas no se cumple devuelve False (fallo en el registro).
 -----------------------------------------------------*/
 void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola) {
 
@@ -377,5 +565,7 @@ Se ejecutará al presionar Ctrl+C y finalizará el bucle principal.
 void manejadorSenal(int sig) {
 
 	stop = 1;
+
+	exit(-1);
 
 }
