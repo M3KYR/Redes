@@ -18,7 +18,7 @@ int main ( )
 
   	struct cliente arrayClientes[MAX_CLIENTS];
 	struct partida arrayPartidas[MAX_MATCHES];
-	struct cliente cola[MAX_QUEUE];
+	struct cliente * cola[MAX_QUEUE];
 
 	signal(SIGINT, manejadorSenal);
 	/* --------------------------------------------------
@@ -40,7 +40,7 @@ int main ( )
 
 	if (bind (sd, (struct sockaddr *) &sockname, sizeof (sockname)) == -1)
 	{
-		perror("Error en la operación bind");
+		perror("Error en la operacion bind");
 		exit(1);
 	}
 
@@ -54,7 +54,7 @@ int main ( )
 
 
 	if(listen(sd,1) == -1){
-		perror("Error en la operación de listen");
+		perror("Error en la operacion de listen");
 		exit(1);
 	}
 
@@ -69,9 +69,9 @@ int main ( )
 		auxfds = readfds;
 		rv = select(FD_SETSIZE, &auxfds, NULL, NULL, NULL);
 		if (rv == -1)
-			perror("Error en la operación de select");
+			perror("Error en la operacion de select");
 		else if (rv == 0) {
-			printf("Tiempo de espera agotado. Ningún cliente envió información en 10 segundos\n");
+			printf("Tiempo de espera agotado. Ningún cliente envio informacion en 10 segundos\n");
 		}
 		else {
 			for (i=0;i<FD_SETSIZE;i++) {
@@ -90,7 +90,7 @@ int main ( )
 								numClientes++;
 							}
 							else {
-								send(new_sd,"Número máximo de clientes alcanzado. Inténtalo más tarde\n",100,0);
+								send(new_sd,"Numero maximo de clientes alcanzado. Intentalo mas tarde\n",100,0);
 								close(new_sd);
 							}
 						}

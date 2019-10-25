@@ -45,7 +45,7 @@ int main (int argc, char * argv[])
 
 	if (connect(sd, (struct sockaddr *)&sockname, len_sockname) == -1)
 	{
-		perror ("Error de conexión");
+		perror ("Error de conexion");
 		exit(1);
 	}
 	
@@ -57,38 +57,57 @@ int main (int argc, char * argv[])
 	/* ------------------------------------------------------------------
 		Se transmite la información
 	-------------------------------------------------------------------*/
-
+	system("clear");
 	do
 	{
 		auxfds = readfds;
 
 		rv = select(sd + 1, &auxfds, NULL, NULL, NULL);
 		if (rv == -1)
-			perror("Error en la operación de select");
+			perror("Error en la operacion de select");
 		else if (rv == 0) {
-			printf("Tiempo de espera agotado. El servidor no envió información en 10 segundos\n");
+			printf("Tiempo de espera agotado. El servidor no envio informacion en 10 segundos\n");
 			exit(-1);
 		}
 		else {
 			if(FD_ISSET(sd, &auxfds)){
 				bzero(buffer,sizeof(buffer));
 				recv(sd,buffer,sizeof(buffer),0);
+				if(strstr(buffer,"TABLERO"))
+					system("clear");
 				printf("%s",buffer);
-				if(strcmp(buffer,"Número máximo de clientes alcanzado. Inténtalo más tarde\n") == 0)
+				if(strcmp(buffer,"Numero maximo de clientes alcanzado. Intentalo mas tarde\n") == 0)
 					fin = 1;
-				if(strcmp(buffer,"+OK. Desconexión procesada\n") == 0)
+				if(strcmp(buffer,"+OK. Desconexion procesada\n") == 0)
 					fin = 1;
 			}
 			else {
-				if(FD_ISSET(0,&auxfds)){
-					bzero(buffer,sizeof(buffer));
-					fgets(buffer,sizeof(buffer),stdin);
-					send(sd,buffer,sizeof(buffer),0);
+				if(turnoEspera(buffer) == 0) {
+					if(FD_ISSET(0,&auxfds)){
+						bzero(buffer,sizeof(buffer));
+						fgets(buffer,sizeof(buffer),stdin);
+						send(sd,buffer,sizeof(buffer),0);
+					}
 				}
 			}
 		}
     }while(fin == 0);
 
 	close(sd);
+	return 0;
+}
+
+int turnoEspera(char * buffer) {
+
+	if(strcmp(buffer,"+OK. Peticion recibida. Quedamos a la espera de mas jugadores\n") == 0)
+		return 1;
+	if(strcmp(buffer,"+OK. Empieza la partida\n") == 0)
+		return 1;
+	if(strcmp(buffer,"+OK. Turno del otro jugador\n") == 0)
+		return 1;
+	if(strstr(buffer,"TABLERO"))
+		return 1;
+	if(strstr(buffer,"FICHAS"))
+		return 1;
 	return 0;
 }

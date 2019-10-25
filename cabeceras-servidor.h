@@ -22,14 +22,17 @@ struct cliente {
   int socket;
   int estado;
   struct partida * partida;
-  struct ficha * fichas[21];
+  struct ficha * fichas;
+  int nFichas;
 };
 
 struct partida {
   struct cliente * jugador1;
   struct cliente * jugador2;
-  struct ficha * monton[14];
-  int tablero[56];
+  struct ficha * monton;
+  int tMonton;
+  int tablero[200];
+  int tTablero;
 };
 
 struct ficha {
@@ -37,11 +40,11 @@ struct ficha {
   int num2;
 };
 
-void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[],int * nCola, int socket, fd_set * readfds);
+void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente * cola[],int * nCola, int socket, fd_set * readfds);
 void Usuario(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes);
 void Password(struct cliente * cliente, struct cliente arrayClientes[], char aux[], int numClientes);
 void Registro(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, char buffer[]);
-void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola);
+void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente * cola[], int * nCola);
 void colocarFicha(struct cliente * cliente, char buffer[]);
 void robarFicha(struct cliente * cliente);
 void pasoTurno(struct cliente * cliente);
@@ -53,7 +56,10 @@ void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct pa
 void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partidas);
 bool compruebaFichas(struct cliente * cliente);
 void correPosiciones(struct partida * partida);
-struct cliente * popCola(struct cliente cola[],int * nCola);
+struct cliente * popCola(struct cliente * cola[],int * nCola);
 void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola);
+void cambiaTurno(struct cliente * cliente);
+void imprimeTablero(char * respuesta,struct partida * partida);
+void imprimeFichas(char * fichas,struct cliente * cliente);
 void desconectaClientes(struct cliente arrayClientes[], int * numClientes, fd_set * readfds);
 void manejadorSenal(int sig);

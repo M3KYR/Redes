@@ -5,7 +5,7 @@
 
 Esta función se encarga de comprobar la opcion introducida por el cliente y ejecutará la función correspondiente a cada opción.
 -----------------------------------------------------*/
-void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numClientes, struct partida arrayPartidas[], int * numPartidas,struct cliente cola[],int * nCola, int socket, fd_set * readfds) {
+void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numClientes, struct partida arrayPartidas[], int * numPartidas,struct cliente * cola[],int * nCola, int socket, fd_set * readfds) {
 
 	char aux[20], option[20];
 	int i;
@@ -30,13 +30,13 @@ void compruebaEntrada(char * buffer, struct cliente arrayClientes[], int * numCl
 	else if (strcmp(option, "INICIAR-PARTIDA")== 0) {
 		iniciaPartida(cliente,arrayClientes,*numClientes,arrayPartidas,numPartidas,cola,nCola);
 	}
-	else if (strcmp(option, "COLOCAR-FICHA")== 0 && cliente->estado == 5) {
+	else if (strcmp(option, "COLOCAR-FICHA")== 0 && cliente->estado == 4) {
 		colocarFicha(cliente,buffer);
 	}
-	else if (strcmp(option, "ROBAR-FICHA")== 0 && cliente->estado == 5) {
+	else if (strcmp(option, "ROBAR-FICHA")== 0 && cliente->estado == 4) {
 		robarFicha(cliente);
 	}
-	else if (strcmp(option, "PASO-TURNO")== 0 && cliente->estado == 5) {
+	else if (strcmp(option, "PASO-TURNO")== 0 && cliente->estado == 4) {
 		pasoTurno(cliente);
 	}
 	else if (strcmp(option, "SALIR") == 0)
@@ -122,22 +122,30 @@ si es correcto pasa a comprobar la cola de espera para partida:
 	· Si se forma un grupo de dos jugadores, manda un mensaje a ambos indicando que la partida va a comenzar y se procede a empezar el juego.
 	· Si no hay suficientes jugadores en la cola, manda un mensaje al cliente indicando que debe esperar a la conexión de otro jugador.
 -----------------------------------------------------*/
-void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente cola[], int * nCola) {
+void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente * cola[], int * nCola) {
 
-	if (cliente->estado == 2) {
+	if (cliente->estado == 0) {
 		
 		if (*nCola>0 && *numPartidas<MAX_MATCHES) {
 			struct cliente * jugador1 = popCola(cola,nCola);
 			creaPartida(jugador1,cliente,arrayPartidas,numPartidas);
+			char tablero[100];
+			char fichas[100];
 			send(cliente->socket,"+OK. Empieza la partida\n",100,0);
 			send(jugador1->socket,"+OK. Empieza la partida\n",100,0);
-			cliente->estado = 4;
-			jugador1->estado = 4;
+			if (cliente->estado == 4) {
+				cambiaTurno(cliente);
+				send(jugador1->socket,"+OK. Turno del otro jugador\n",100,0);
+			}
+			else {
+				cambiaTurno(jugador1);
+				send(cliente->socket,"+OK. Turno del otro jugador\n",100,0);
+			}
 		}
 		else if((*nCola>0 && *numPartidas==MAX_MATCHES) || *nCola==0) {
-			send(cliente->socket,"+OK. Peticion recibida.Quedamos a la espera de más jugadores\n",100,0);
+			send(cliente->socket,"+OK. Peticion recibida. Quedamos a la espera de mas jugadores\n",100,0);
 			cliente->estado = 3;
-			pushCola(cliente,&cola,nCola);
+			pushCola(cliente,cola,nCola);
 		}
 	}
 	
@@ -156,49 +164,93 @@ si es correcto pasa a comprobar la cola de espera para partida:
 -----------------------------------------------------*/
 void colocarFicha(struct cliente * cliente, char buffer[]) {
 	
-	int num1,num2,i;
+	int num1,num2,i,colocada = 0;
 	
 	char extremo[20];
 	
 	struct partida * partida = cliente->partida;
 	
-	int nFichas = sizeof(cliente->fichas)/sizeof(struct ficha);
+	int nFichas = cliente->nFichas;
 	
-	int tTablero = sizeof(partida->tablero)/sizeof(int);
+	int tTablero = partida->tTablero;
 	
-	sscanf(buffer,"COLOCAR-FICHA |%d|%d|,%s",num1,num2,extremo);
+	sscanf(buffer,"COLOCAR-FICHA |%d|%d|,%s",&num1,&num2,extremo);
 	
 	bool bandera = false;
 	
 	for(i=0;i<nFichas;i++) {
-		if(num1==cliente->fichas[i]->num1 && num2==cliente->fichas[i]->num2) {			//Que el cliente tenga la puta ficha
+		if(num1==cliente->fichas[i].num1 && num2==cliente->fichas[i].num2) {
 			bandera = true;
+			break;
 		}
 	}
-	
-	if(strcmp(extremo,"DERECHA")==0 && bandera==true) {
-		if(num1==partida->tablero[tTablero-1]) {
-			partida->tablero[tTablero] = num1;
-			partida->tablero[tTablero+1] = num2;
+
+	if(bandera == true && (strcmp(extremo,"DERECHA") == 0 ||strcmp(extremo,"IZQUIERDA") == 0)) {
+		if(tTablero>0) {
+			if(strcmp(extremo,"DERECHA")==0 && bandera==true) {
+				if(num1==partida->tablero[tTablero-1]) {
+					partida->tablero[tTablero] = num1;
+					partida->tablero[tTablero+1] = num2;
+					colocada = 1;
+				}
+				else if(num2==partida->tablero[tTablero-1]) {
+					partida->tablero[tTablero] = num2;
+					partida->tablero[tTablero+1] = num1;
+					colocada = 1;
+				}
+			}
+			else if(strcmp(extremo,"IZQUIERDA")==0 && bandera==true) {
+				if(num1==partida->tablero[0]) {
+					correPosiciones(partida);
+					partida->tablero[1] = num1;
+					partida->tablero[0] = num2;
+					colocada = 1;
+				}
+				else if(num2==partida->tablero[0]) {
+					correPosiciones(partida);
+					partida->tablero[1] = num2;
+					partida->tablero[0] = num1;
+					colocada = 1;
+				}
+			}
 		}
-		else if(num2==partida->tablero[tTablero-1]) {
-			partida->tablero[tTablero] = num2;
-			partida->tablero[tTablero+1] = num1;
+		else {
+					partida->tablero[0] = num1;
+					partida->tablero[1] = num2;
+					colocada = 1;
 		}
 	}
-	
-	if(strcmp(extremo,"IZQUIERDA")==0 && bandera==true) {
-		correPosiciones(partida);
-		if(num1==partida->tablero[0]) {
-			partida->tablero[1] = num1;
-			partida->tablero[0] = num2;
+
+		if(colocada == 1) {
+			cliente->nFichas -= 1;
+
+			for(;i<cliente->nFichas;i++) {
+				cliente->fichas[i] = cliente->fichas[i+1];
+			}
+
+			partida->tTablero += 2;
+			char respuesta[100];
+			imprimeTablero(respuesta,partida);
+			if(partida->jugador1->estado == 4) {
+				partida->jugador1->estado = 5;
+				partida->jugador2->estado = 4;
+				cambiaTurno(partida->jugador2);
+				send(partida->jugador1->socket,respuesta,100,0);
+				usleep(10000);
+				send(partida->jugador1->socket,"+OK. Turno del otro jugador\n",100,0);
+			}
+			else {
+				partida->jugador1->estado = 4;
+				partida->jugador2->estado = 5;
+				cambiaTurno(partida->jugador1);
+				send(partida->jugador2->socket,respuesta,100,0);
+				usleep(10000);
+				send(partida->jugador2->socket,"+OK. Turno del otro jugador\n",100,0);
+			}
 		}
-		else if(num2==partida->tablero[0]) {
-			partida->tablero[1] = num2;
-			partida->tablero[0] = num1;
+		else {
+			send(cliente->socket,"-Err. La ficha no puede ser colocada",100,0);
 		}
-	}
-	
 }
 
 /*----------------------------------------------------
@@ -215,19 +267,31 @@ void robarFicha(struct cliente * cliente) {
 	
 	struct partida * partida = cliente->partida;
 	
-	int tam = sizeof(partida->monton)/sizeof(struct ficha);
+	int tam = cliente->partida->tMonton;
 	
-	int nFich = sizeof(cliente->fichas)/sizeof(struct ficha);
+	int nFich = cliente->nFichas;
 	
-	elegida = rand() % tam;
-	cliente->fichas[nFich] = partida->monton[elegida];
-	
-	for(i = elegida; i<27; i++) {
-		partida->monton[i] = partida->monton[i+1];
+	if(compruebaFichas(cliente) == true) {
+		send(cliente->socket,"+Ok. No es necesario robar ficha\n",100,0);
 	}
-	
-	
-
+	else {
+		elegida = rand() % tam;
+		cliente->fichas[nFich] = partida->monton[elegida];
+		cliente->nFichas += 1;
+		char respuesta[20] = "FICHA |";
+		char aux1,aux2;
+		aux1 = partida->monton[elegida].num1;
+		aux2 = partida->monton[elegida].num2;
+		strcat(respuesta,&aux1);
+		strcat(respuesta,"|");
+		strcat(respuesta,&aux2);
+		strcat(respuesta,"|");
+		send(cliente->socket,respuesta,100,0);
+		for(i = elegida; i<tam-1; i++) {
+			partida->monton[i] = partida->monton[i+1];
+		}
+		partida->tMonton -= 1;
+	}
 }
 
 /*----------------------------------------------------
@@ -240,13 +304,22 @@ si es correcto pasa a comprobar la cola de espera para partida:
 -----------------------------------------------------*/
 void pasoTurno(struct cliente * cliente) {
 
-	int monton = sizeof(cliente->partida->monton)/sizeof(struct ficha);
+	int monton = cliente->partida->tMonton;
 	
 	if(compruebaFichas(cliente) == true || monton > 0) {
 		send(cliente->socket,"+OK. No es necesario pasar turno\n",100,0);
 	}
 	else {
-		cliente->estado = 6;
+		cliente->estado = 5;
+		if(cliente->partida->jugador1->socket == cliente->socket) {
+			cliente->partida->jugador2->estado = 4;
+			cambiaTurno(cliente->partida->jugador2);
+		}
+		else {
+			cliente->partida->jugador1->estado = 4;
+			cambiaTurno(cliente->partida->jugador1);
+		}
+		send(cliente->socket,"+OK. Turno del otro jugador\n",100,0);
 	}
 }
 /*----------------------------------------------------
@@ -261,7 +334,7 @@ void Salir(struct cliente * cliente, struct cliente arrayClientes[], int * numCl
 
 	int i;
 
-	send(cliente->socket,"+OK. Desconexión procesada\n",100,0);
+	send(cliente->socket,"+OK. Desconexion procesada\n",100,0);
 	close(cliente->socket);
 	FD_CLR(cliente->socket,readfds);
 
@@ -271,7 +344,6 @@ void Salir(struct cliente * cliente, struct cliente arrayClientes[], int * numCl
 	}
 	for(;i<*numClientes - 1;i++) {
 		arrayClientes[i] = arrayClientes[i+1];
-		printf("He hecho algun cambio\n");
 	}
 	*numClientes = *numClientes - 1;
 }
@@ -381,6 +453,12 @@ void creaPartida(struct cliente * jugador1, struct cliente * jugador2, struct pa
 	partida->jugador1 = jugador1;
 	
 	partida->jugador2 = jugador2;
+
+	jugador1->partida = partida;
+
+	jugador2->partida = partida;
+
+	partida->tTablero = 0;
 	
 	*numPartidas = *numPartidas + 1;
 	
@@ -394,76 +472,30 @@ Se ejecutará en la función creaPartida. La función creará las 28 fichas para
 -----------------------------------------------------*/
 void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida * partida) {
 
-	int pos,i,j=0;
+	int pos,i,j=0,max=0,aux=2;
 	
 	bool bandera = false;
 	bool cogida[28] = {false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false};
 
-	struct ficha * fichas[28];
+	struct ficha fichas[28];
 	
 	srand(time(NULL));
-	
-	fichas[0]->num1=0;
-	fichas[0]->num2=0;
-	fichas[1]->num1=1;
-	fichas[1]->num2=1;
-	fichas[2]->num1=2;
-	fichas[2]->num2=2;
-	fichas[3]->num1=3;
-	fichas[3]->num2=3;
-	fichas[4]->num1=4;
-	fichas[4]->num2=4;
-	fichas[5]->num1=5;
-	fichas[5]->num2=5;
-	fichas[6]->num1=6;
-	fichas[6]->num2=6;
-///
-	fichas[7]->num1=0;
-	fichas[7]->num2=1;
-	fichas[8]->num1=0;
-	fichas[8]->num2=2;
-	fichas[9]->num1=0;
-	fichas[9]->num2=3;
-	fichas[10]->num1=0;
-	fichas[10]->num2=4;
-	fichas[11]->num1=0;
-	fichas[11]->num2=5;
-	fichas[12]->num1=0;
-	fichas[12]->num2=6;
-///
-	fichas[13]->num1=1;
-	fichas[13]->num2=2;
-	fichas[14]->num1=1;
-	fichas[14]->num2=3;
-	fichas[15]->num1=1;
-	fichas[15]->num2=4;
-	fichas[16]->num1=1;
-	fichas[16]->num2=5;
-	fichas[17]->num1=1;
-	fichas[17]->num2=6;
-	fichas[18]->num1=2;
-	fichas[18]->num2=3;
-///
-	fichas[19]->num1=2;
-	fichas[19]->num2=4;
-	fichas[20]->num1=2;
-	fichas[20]->num2=5;
-	fichas[21]->num1=2;
-	fichas[21]->num2=6;
-	fichas[22]->num1=3;
-	fichas[22]->num2=4;
-	fichas[23]->num1=3;
-	fichas[23]->num2=5;
-	fichas[24]->num1=3;
-	fichas[24]->num2=6;
-///
-	fichas[25]->num1=4;
-	fichas[25]->num2=5;
-	fichas[26]->num1=4;
-	fichas[26]->num2=6;
-	fichas[27]->num1=5;
-	fichas[27]->num2=6;
-	
+
+	jugador1->fichas = (struct ficha *)malloc(sizeof(struct ficha)*21);
+	jugador2->fichas = (struct ficha *)malloc(sizeof(struct ficha)*21);
+	partida->monton = (struct ficha *)malloc(sizeof(struct ficha)*14);
+	partida->tMonton = 14;
+	jugador1->nFichas = 7;
+	jugador2->nFichas = 7;
+
+	int f=0;
+	for(i=0; i<7; i++) {
+		for(j=i;j<7;j++) {
+			fichas[f].num1=i;
+			fichas[f].num2=j;
+			f++;
+		}
+	}
 	for(i=0; i<7; i++) {
 		while(bandera == false) {
 			pos = rand() % 28;
@@ -473,6 +505,7 @@ void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida
 		}
 		jugador1->fichas[i] = fichas[pos];
 		bandera = false;
+		cogida[pos] = true;
 	}
 	
 	for(i=0; i<7; i++) {
@@ -484,6 +517,7 @@ void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida
 		}
 		jugador2->fichas[i] = fichas[pos];
 		bandera = false;
+		cogida[pos] = true;
 	}
 	
 	for(i=0; i<28; i++) {
@@ -492,7 +526,39 @@ void Fichas(struct cliente * jugador1, struct cliente * jugador2, struct partida
 			j++;
 		}
 	}
-		
+
+	for(i=0; i<7; i++) {
+		if((jugador1->fichas[i].num1 == jugador1->fichas[i].num2) && (jugador1->fichas[i].num1 * 2) > max) {
+			max = jugador1->fichas[i].num1 * 2;
+			aux = 0;
+		}
+		if((jugador2->fichas[i].num1 == jugador2->fichas[i].num2) && (jugador2->fichas[i].num1 * 2) > max) {
+			max = jugador2->fichas[i].num1 * 2;
+			aux = 1;
+		}
+	}
+
+	if(aux == 2) {
+		for(i=0; i<7; i++) {
+			if((jugador1->fichas[i].num1 + jugador1->fichas[i].num2) > max) {
+				max = jugador1->fichas[i].num1 + jugador1->fichas[i].num2;
+				aux = 0;
+			}
+			if((jugador2->fichas[i].num1 + jugador2->fichas[i].num2) > max) {
+				max = jugador2->fichas[i].num1 + jugador2->fichas[i].num2;
+				aux = 1;
+			}
+		}
+	}
+
+	if(aux == 0) {
+		jugador1->estado=4;
+		jugador2->estado=5;
+	}
+	else {
+		jugador1->estado=5;
+		jugador2->estado=4;
+	}
 		
 }
 
@@ -507,12 +573,12 @@ bool compruebaFichas(struct cliente * cliente) {
 	
 	struct partida * partida = cliente->partida;
 	
-	int tam = sizeof(partida->tablero)/sizeof(int);
+	int tam = partida->tMonton;
 	
-	int nFichas = sizeof(cliente->fichas)/sizeof(struct ficha);
+	int nFichas = cliente->nFichas;
 	
 	for(i=0; i<nFichas;i++) {
-		if(cliente->fichas[i]->num1 == partida->tablero[0] || cliente->fichas[i]->num2 == partida->tablero[0] || cliente->fichas[i]->num1 == partida->tablero[tam] || cliente->fichas[i]->num2 == partida->tablero[tam]) {
+		if(cliente->fichas[i].num1 == partida->tablero[0] || cliente->fichas[i].num2 == partida->tablero[0] || cliente->fichas[i].num1 == partida->tablero[tam] || cliente->fichas[i].num2 == partida->tablero[tam]) {
 			return true;
 		}
 	}
@@ -530,10 +596,10 @@ void correPosiciones(struct partida * partida) {
 	
 	int i;
 	
-	int tam = sizeof(partida->tablero)/sizeof(int);
+	int tam = partida->tMonton;
 	
-	for(i=0;i<tam-2;i++) {
-		partida->tablero[i]=partida->tablero[i+2];
+	for(i=tam;i>=0;i--) {
+		partida->tablero[i+2]=partida->tablero[i];
 	}
 	
 }
@@ -543,11 +609,11 @@ void correPosiciones(struct partida * partida) {
 
 Se ejecutará en la función iniciaPartida(). La función devuelve el primer jugador que entró a la cola y disminuye el tamaño de esta.
 -----------------------------------------------------*/
-struct cliente * popCola(struct cliente cola[],int * nCola) {
+struct cliente * popCola(struct cliente * cola[],int * nCola) {
 
 	int i;
 	
-	struct cliente * cliente = &cola[0];
+	struct cliente * cliente = cola[0];
 	
 	*nCola = *nCola - 1;
 	
@@ -570,6 +636,75 @@ void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola) {
 	cola[*nCola] = cliente;
 	
 	*nCola = *nCola + 1;
+	
+}
+
+/*----------------------------------------------------
+	Funcion cambiaTurno
+
+Se ejecutará en la función iniciaPartida(). La función introduce un jugador en la cola y aumenta el tamaño de esta.
+-----------------------------------------------------*/
+void cambiaTurno(struct cliente * cliente) {
+
+	char tablero[100];
+	char fichas[100];
+
+	bzero(tablero,sizeof(tablero));
+	bzero(fichas,sizeof(fichas));
+	imprimeTablero(tablero,cliente->partida);
+	usleep(10000);
+	send(cliente->socket,tablero,100,0);
+	usleep(10000);
+	imprimeFichas(fichas,cliente);
+	send(cliente->socket,fichas,100,0);
+	usleep(10000);
+	send(cliente->socket,"+OK. Es tu turno\n\n",100,0);
+	
+}
+/*----------------------------------------------------
+	Funcion imprimeTablero
+
+Se ejecutará en la función iniciaPartida(). La función introduce un jugador en la cola y aumenta el tamaño de esta.
+-----------------------------------------------------*/
+void imprimeTablero(char * respuesta,struct partida * partida) {
+
+	int i;
+	char aux[4];
+	int tam = partida->tTablero;
+	strcpy(respuesta,"TABLERO ");
+
+	for(i=0;i<tam;i++) {
+		sprintf(aux,"%d",partida->tablero[i]);
+		strcat(respuesta,"|");
+		strcat(respuesta,aux);
+		strcat(respuesta,"|");
+	}
+	strcat(respuesta,"\n\n");
+
+}
+
+/*----------------------------------------------------
+	Funcion imprimeFichas
+
+Se ejecutará en la función iniciaPartida(). La función introduce un jugador en la cola y aumenta el tamaño de esta.
+-----------------------------------------------------*/
+void imprimeFichas(char * fichas,struct cliente * cliente) {
+
+	int i;
+	char aux1[4], aux2[4];
+	int tam = cliente->nFichas;
+	strcpy(fichas,"FICHAS ");
+
+	for(i=0;i<tam;i++) {
+		sprintf(aux1,"%d",cliente->fichas[i].num1);
+		strcat(fichas,"|");
+		strcat(fichas,aux1);
+		sprintf(aux2,"%d",cliente->fichas[i].num2);
+		strcat(fichas,"|");
+		strcat(fichas,aux2);
+		strcat(fichas,"|");
+	}
+	strcat(fichas,"\n\n");
 	
 }
 /*----------------------------------------------------
