@@ -80,6 +80,8 @@ int main (int argc, char * argv[])
 					fin = 1;
 				if(strcmp(buffer,"+OK. Desconexion procesada\n") == 0)
 					fin = 1;
+				if(strstr(buffer,"+OK. Partida Finalizada."))
+					send(sd,"SALIR",sizeof("SALIR"),0);
 			}
 			else {
 				if(turnoEspera(buffer) == 0) {

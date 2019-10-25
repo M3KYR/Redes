@@ -85,12 +85,12 @@ int main ( )
 							if(numClientes < MAX_CLIENTS) {
 								arrayClientes[numClientes].socket = new_sd;
 								FD_SET(new_sd,&readfds);
-								send(new_sd,"+OK. Usuario conectado\n",100,0);
+								send(new_sd,"+OK. Usuario conectado\n",250,0);
 								arrayClientes[numClientes].estado = 0;
 								numClientes++;
 							}
 							else {
-								send(new_sd,"Numero maximo de clientes alcanzado. Intentalo mas tarde\n",100,0);
+								send(new_sd,"Numero maximo de clientes alcanzado. Intentalo mas tarde\n",250,0);
 								close(new_sd);
 							}
 						}

@@ -31,7 +31,7 @@ struct partida {
   struct cliente * jugador2;
   struct ficha * monton;
   int tMonton;
-  int tablero[200];
+  int tablero[250];
   int tTablero;
 };
 
@@ -59,6 +59,8 @@ void correPosiciones(struct partida * partida);
 struct cliente * popCola(struct cliente * cola[],int * nCola);
 void pushCola(struct cliente * cliente,struct cliente * cola[],int * nCola);
 void cambiaTurno(struct cliente * cliente);
+void finPartida(struct cliente * cliente);
+int cuentaFichas(struct cliente * cliente);
 void imprimeTablero(char * respuesta,struct partida * partida);
 void imprimeFichas(char * fichas,struct cliente * cliente);
 void desconectaClientes(struct cliente arrayClientes[], int * numClientes, fd_set * readfds);

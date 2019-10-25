@@ -124,7 +124,7 @@ si es correcto pasa a comprobar la cola de espera para partida:
 -----------------------------------------------------*/
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente * cola[], int * nCola) {
 
-	if (cliente->estado == 2) {
+	if (cliente->estado == 0) {
 		
 		if (*nCola>0 && *numPartidas<MAX_MATCHES) {
 			struct cliente * jugador1 = popCola(cola,nCola);
