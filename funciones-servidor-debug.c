@@ -124,7 +124,7 @@ si es correcto pasa a comprobar la cola de espera para partida:
 -----------------------------------------------------*/
 void iniciaPartida(struct cliente * cliente, struct cliente arrayClientes[], int numClientes, struct partida arrayPartidas[], int * numPartidas, struct cliente * cola[], int * nCola) {
 
-	if (cliente->estado == 2) {
+	if (cliente->estado == 0) {
 		
 		if (*nCola>0 && *numPartidas<MAX_MATCHES) {
 			struct cliente * jugador1 = popCola(cola,nCola);
@@ -162,7 +162,7 @@ si es correcto pasa a comprobar la cola de espera para partida:
 -----------------------------------------------------*/
 void colocarFicha(struct cliente * cliente, char buffer[]) {
 	
-	int num1,num2,i,colocada = 0,max=0;
+	int num1,num2,i,colocada = 0;
 	
 	char extremo[20];
 	
@@ -212,32 +212,10 @@ void colocarFicha(struct cliente * cliente, char buffer[]) {
 				}
 			}
 		}
-		else{
-			if(num1==num2){
-				
-				for(i=0; i<nFichas; i++){
-					if(cliente->fichas[i].num1==cliente->fichas[i].num2 && ((cliente->fichas[i].num1 * 2)> max)) {
-						max = cliente->fichas[i].num1 *2;
-					}
-				}
-				if((num1*2)==max){
+		else {
 					partida->tablero[0] = num1;
 					partida->tablero[1] = num2;
 					colocada = 1;
-				}
-			
-			}else{
-				for(i=0; i<nFichas; i++){
-					if((cliente->fichas[i].num1 + cliente->fichas[i].num2) > max) {
-						max = cliente->fichas[i].num1 + cliente->fichas[i].num2;
-					}
-				}
-				if((num1+num2)== max){
-					partida->tablero[0] = num1;
-					partida->tablero[1] = num2;
-					colocada = 1;
-				}
-			}
 		}
 	}
 
